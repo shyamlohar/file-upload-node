@@ -31,15 +31,6 @@ const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, 'uploads')
     },
-    fileFilter: function (req, file, cb) {
-        if (file.mimetype.split('/')[0] != 'image') {
-            console.log('maaki chut')
-            cb(null, false, new Error('I dont have a clue!'))
-        }
-        else {
-            console.log('bhai bhai bhai')
-        }
-    },
     filename: function (req, file, cb) {
         cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname))
     },
@@ -48,21 +39,20 @@ const storage = multer.diskStorage({
 const upload = multer({
     storage: storage,
     fileFilter: function (req, file, cb) {
+        console.log(file)
         if (file.mimetype.split('/')[0] != 'image') {
-            console.log('maaki chut')
-            cb(null, false, new Error('I dont have a clue!'))
+            cb(new Error('I don\'t have a clue!'))
         }
         else {
-            console.log('bhai bhai bhai')
+            cb(null, true)
         }
     },
-})
+}).single('file')
 
 app.get('/', (req, res) => {
     FileInfo.find()
         .then((files) => {
             let filesArray = files.map(({ _id, url }) => ({ _id, url }));
-            console.log(filesArray);
             res.render('home', { images: filesArray });
         },
             (err) => {
@@ -72,16 +62,24 @@ app.get('/', (req, res) => {
             })
 })
 
-app.post('/pic', upload.single('file'), (req, res) => {
-    console.log(req.file);
-    let file = new FileInfo({
-        url: `http://localhost:8000/uploads/${req.file.filename}`
-    }).save((err, file) => {
+app.post('/pic', (req, res) => {
+    upload(req, res, function (err) {
         if (err) {
-            console.log(err);
+            // An error occurred when uploading
+            console.log(err)
+            return res.redirect('/')
         }
+
+        console.log(req.file);
+        let file = new FileInfo({
+            url: `http://localhost:8000/uploads/${req.file.filename}`
+        }).save((err, file) => {
+            if (err) {
+                console.log(err);
+            }
+        })
+        res.redirect('/')
     })
-    res.redirect('/')
 
 })
 
